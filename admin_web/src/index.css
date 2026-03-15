@@ -1,8 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body{
-  @apply bg-offwhite;
-  font-family: "Inter", sans-serif;
+:root {
+  --teal:      #0F5C5C;
+  --teal-dark: #0a3f3f;
+  --teal-light:#1a7a7a;
+  --sand:      #F5F0E8;
+  --terra:     #C96E4A;
+  --sage:      #8FB0A1;
+  --sage-bg:   #e8f0ec;
+  --offwhite:  #FAF9F7;
+  --text:      #1a2e2e;
+  --muted:     #6b8a82;
+  --border:    #e2ece8;
 }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #F5F0E8;
+  color: #1a2e2e;
+  -webkit-font-smoothing: antialiased;
+}
+
+.serif { font-family: 'DM Serif Display', serif; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #8FB0A1; border-radius: 99px; }
