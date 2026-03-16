@@ -7,6 +7,7 @@ import {
   FaUser, FaBuilding
 } from 'react-icons/fa';
 import logo from '../assets/logo.svg';
+import { auth } from '../api/api';
 
 const NAV = [
   { label: 'Dashboard',     icon: <FaTachometerAlt />, path: '/dashboard' },
@@ -25,27 +26,27 @@ export default function Sidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  function handleLogout() {
-    // Clear any auth tokens here if needed
+  async function handleLogout() {
+    await auth.logout(); // POST /api/v1/auth/logout + clears tokens
     navigate('/', { replace: true });
   }
 
   return (
     <aside
       style={{ width: collapsed ? 72 : 224, background: '#0F5C5C', flexShrink: 0 }}
-      className="h-screen flex flex-col sticky top-0 overflow-y-auto"
+      className="sticky top-0 flex flex-col h-screen overflow-y-auto"
     >
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 py-5 mb-1">
         <img
           src={logo}
           alt="Madad"
-          className="object-contain flex-shrink-0"
+          className="flex-shrink-0 object-contain"
           style={{ width: 44, height: 44, filter: 'brightness(0) invert(1)' }}
         />
         {!collapsed && (
           <div>
-            <div className="text-white font-semibold text-lg leading-none"
+            <div className="text-lg font-semibold leading-none text-white"
               style={{ fontFamily: 'DM Serif Display, serif' }}>
               Madad
             </div>
@@ -54,10 +55,10 @@ export default function Sidebar() {
         )}
       </div>
 
-      <div className="mx-4 h-px bg-white/10 mb-4" />
+      <div className="h-px mx-4 mb-4 bg-white/10" />
 
       {/* Nav */}
-      <nav className="flex-1 px-2 flex flex-col gap-1">
+      <nav className="flex flex-col flex-1 gap-1 px-2">
         {NAV.map(item => {
           const active = pathname === item.path || pathname.startsWith(item.path + '/');
           return (
@@ -72,7 +73,7 @@ export default function Sidebar() {
                 fontSize: 13.5,
               }}
             >
-              <span className="text-base flex-shrink-0">{item.icon}</span>
+              <span className="flex-shrink-0 text-base">{item.icon}</span>
               {!collapsed && <span>{item.label}</span>}
               {!collapsed && active && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#C96E4A]" />
@@ -82,7 +83,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="mx-4 h-px bg-white/10 my-3" />
+      <div className="h-px mx-4 my-3 bg-white/10" />
 
       {/* Collapse toggle */}
       <button
@@ -90,7 +91,7 @@ export default function Sidebar() {
         className="mx-2 mb-2 flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer border-none"
         style={{ background: 'transparent', color: 'rgba(255,255,255,0.4)', fontSize: 13 }}
       >
-        <span className="text-base flex-shrink-0">{collapsed ? '→' : '←'}</span>
+        <span className="flex-shrink-0 text-base">{collapsed ? '→' : '←'}</span>
         {!collapsed && <span>Collapse</span>}
       </button>
 

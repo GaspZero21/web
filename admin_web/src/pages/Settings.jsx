@@ -16,15 +16,15 @@ export default function Settings() {
 
   const Toggle = ({ checked, onChange }) => (
     <button type="button" onClick={() => onChange(!checked)}
-      className="relative w-11 h-6 rounded-full border-none cursor-pointer flex-shrink-0"
+      className="relative flex-shrink-0 h-6 border-none rounded-full cursor-pointer w-11"
       style={{ background: checked ? '#0F5C5C' : '#e2ece8' }}>
-      <div className="absolute top-1 w-4 h-4 rounded-full bg-white"
+      <div className="absolute w-4 h-4 bg-white rounded-full top-1"
         style={{ left: checked ? '24px' : '4px' }} />
     </button>
   );
 
   return (
-    <div className="flex flex-col gap-5 max-w-2xl">
+    <div className="flex flex-col max-w-2xl gap-5">
       <div>
         <h1 className="text-xl font-semibold text-[#1a2e2e]" style={{ fontFamily: 'DM Serif Display, serif' }}>Settings</h1>
         <p className="text-sm text-[#6b8a82] mt-0.5">Configure your admin preferences</p>
@@ -38,7 +38,7 @@ export default function Settings() {
           <div className="px-6 py-4 border-b border-[#e2ece8]">
             <h2 className="font-semibold text-[#1a2e2e] text-sm">Appearance</h2>
           </div>
-          <div className="p-6 flex flex-col gap-5">
+          <div className="flex flex-col gap-5 p-6">
             <div>
               <label className="block text-xs font-semibold text-[#6b8a82] mb-2 uppercase tracking-wide">Theme</label>
               <select value={theme} onChange={e => setTheme(e.target.value)}
@@ -65,7 +65,7 @@ export default function Settings() {
           <div className="px-6 py-4 border-b border-[#e2ece8]">
             <h2 className="font-semibold text-[#1a2e2e] text-sm">Notifications</h2>
           </div>
-          <div className="p-6 flex flex-col gap-4">
+          <div className="flex flex-col gap-4 p-6">
             {[
               { label:'Push Notifications', sub:'Receive alerts in the browser', val:notifications, set:setNotifications },
               { label:'Email Alerts',       sub:'Get notified via email',         val:emailAlerts,   set:setEmailAlerts },
@@ -82,7 +82,7 @@ export default function Settings() {
         </div>
 
         <button type="submit"
-          className="self-start px-6 py-3 rounded-xl text-white text-sm font-semibold border-none cursor-pointer"
+          className="self-start px-6 py-3 text-sm font-semibold text-white border-none cursor-pointer rounded-xl"
           style={{ background: '#0F5C5C' }}>
           {saved ? '✓ Saved!' : 'Save Settings'}
         </button>

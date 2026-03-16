@@ -57,7 +57,7 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+        <div className="flex flex-col flex-1 gap-4 px-5 py-4 overflow-y-auto">
           <div className="text-center">
             <span className="text-xs text-[#6b8a82] bg-[#F5F0E8] px-3 py-1 rounded-full border border-[#e2ece8]">Today</span>
           </div>

@@ -4,17 +4,37 @@
 //   open        — boolean
 //   onClose     — fn()
 //   onAdd       — fn(user)
-//   defaultRole — 'Donor' | 'Beneficiary' | 'Association' | 'All' (shows dropdown)
+//   defaultRole — display label: 'Donor' | 'Beneficiary' | 'Association'
 //   fixedRole   — if set, hides the role selector and forces that role
 
 import { useState, useEffect } from 'react';
 
-const ROLES = ['Donor', 'Beneficiary', 'Association'];
+// Display labels for the UI buttons
+const ROLES = ['Donor', 'Beneficiary', 'Association', 'Food Saver'];
 
 const ROLE_COLORS = {
   Donor:       { bg: '#d6ebe5', color: '#0F5C5C' },
   Beneficiary: { bg: '#fde8dc', color: '#8b3d1e' },
   Association: { bg: '#e8e8f0', color: '#3b3b8b' },
+  'Food Saver':{ bg: '#fff3cd', color: '#7c5c10' },
+};
+
+// Map display label → API role value
+const ROLE_TO_API = {
+  Donor:        'DONATOR',
+  Beneficiary:  'BENEFICIARY',
+  Association:  'COLLECTIVITE',
+  'Food Saver': 'FOOD_SAVER',
+};
+
+// Map API role value → display label (for showing fixed role badge)
+const API_TO_LABEL = {
+  DONATOR:      'Donor',
+  BENEFICIARY:  'Beneficiary',
+  COLLECTIVITE: 'Association',
+  FOOD_SAVER:   'Food Saver',
+  ADMIN:        'Admin',
+  USER:         'User',
 };
 
 export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Donor', fixedRole = null }) {
@@ -52,7 +72,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
       email:    email.trim(),
       phone:    phone.trim() || '—',
       password: password.trim(),
-      role,
+      role:     ROLE_TO_API[role] ?? 'USER',  // send API value e.g. DONATOR, COLLECTIVITE
       status,
       joined:   new Date().toISOString().slice(0, 10),
       donations: 0,
@@ -70,28 +90,28 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden"
+        className="w-full max-w-md mx-4 overflow-hidden bg-white rounded-2xl"
         style={{ boxShadow: '0 24px 60px rgba(15,92,92,0.18)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="bg-[#0F5C5C] px-6 py-5 flex items-center justify-between">
           <div>
-            <h2 className="text-white font-semibold text-lg" style={{ fontFamily: 'DM Serif Display, serif' }}>
+            <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'DM Serif Display, serif' }}>
               Add New User
             </h2>
             <p className="text-white/50 text-xs mt-0.5">Fill in the details below</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white border-none cursor-pointer text-lg leading-none"
+            className="flex items-center justify-center w-8 h-8 text-lg leading-none text-white border-none cursor-pointer rounded-xl bg-white/10"
           >
             ×
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
 
           {/* Role selector — shown unless fixedRole is set */}
           {!fixedRole && (
@@ -99,20 +119,23 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
               <label className="block text-xs font-semibold text-[#6b8a82] mb-2 uppercase tracking-wide">
                 Role
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {ROLES.map(r => (
                   <button
                     key={r}
                     type="button"
                     onClick={() => setRole(r)}
-                    className="flex-1 py-2 rounded-xl text-xs font-semibold border-none cursor-pointer"
+                    className="flex-1 py-2 text-xs font-semibold border-none cursor-pointer rounded-xl"
                     style={{
+                      minWidth: '80px',
                       background: role === r ? ROLE_COLORS[r].bg : '#F5F0E8',
                       color:      role === r ? ROLE_COLORS[r].color : '#6b8a82',
                       outline:    role === r ? `2px solid ${ROLE_COLORS[r].color}` : '2px solid transparent',
                     }}
                   >
-                    {r === 'Donor' ? '🤲' : r === 'Beneficiary' ? '🍽' : '🏢'} {r}
+                    {r === 'Donor'       ? '🤲' :
+                     r === 'Beneficiary' ? '🍽' :
+                     r === 'Food Saver'  ? '🌱' : '🏢'} {r}
                   </button>
                 ))}
               </div>
@@ -124,10 +147,11 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-[#6b8a82] uppercase tracking-wide">Role:</span>
               <span
-                className="text-xs font-semibold px-3 py-1 rounded-full"
+                className="px-3 py-1 text-xs font-semibold rounded-full"
                 style={{ background: roleColor.bg, color: roleColor.color }}
               >
-                {fixedRole === 'Donor' ? '🤲' : fixedRole === 'Beneficiary' ? '🍽' : '🏢'} {fixedRole}
+                {fixedRole === 'Donor' ? '🤲' : fixedRole === 'Beneficiary' ? '🍽' : '🏢'}{' '}
+                {API_TO_LABEL[ROLE_TO_API[fixedRole]] ?? fixedRole}
               </span>
             </div>
           )}
@@ -189,7 +213,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
           {/* Phone */}
           <div>
             <label className="block text-xs font-semibold text-[#6b8a82] mb-1.5 uppercase tracking-wide">
-              Phone <span className="normal-case font-normal">(optional)</span>
+              Phone <span className="font-normal normal-case">(optional)</span>
             </label>
             <input
               type="text"
@@ -211,7 +235,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
                   key={s}
                   type="button"
                   onClick={() => setStatus(s)}
-                  className="flex-1 py-2 rounded-xl text-xs font-medium border-none cursor-pointer capitalize"
+                  className="flex-1 py-2 text-xs font-medium capitalize border-none cursor-pointer rounded-xl"
                   style={{
                     background: status === s
                       ? s === 'active' ? '#d6ebe5' : s === 'pending' ? '#fef3cd' : '#fde0dc'

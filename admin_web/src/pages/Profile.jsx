@@ -14,7 +14,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-2xl">
+    <div className="flex flex-col max-w-2xl gap-5">
       <div>
         <h1 className="text-xl font-semibold text-[#1a2e2e]" style={{ fontFamily: 'DM Serif Display, serif' }}>Profile</h1>
         <p className="text-sm text-[#6b8a82] mt-0.5">Manage your admin account</p>
@@ -29,14 +29,14 @@ export default function Profile() {
             AD
           </div>
           <div>
-            <h2 className="text-white font-semibold text-lg">{name}</h2>
+            <h2 className="text-lg font-semibold text-white">{name}</h2>
             <p className="text-white/60 text-sm mt-0.5">{email}</p>
             <span className="mt-2 inline-block text-xs bg-white/15 text-white px-2.5 py-0.5 rounded-full">Super Admin</span>
           </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSave} className="p-6 flex flex-col gap-5">
+        <form onSubmit={handleSave} className="flex flex-col gap-5 p-6">
           {[
             { label:'Full Name', type:'text', value:name, setter:setName },
             { label:'Email Address', type:'email', value:email, setter:setEmail },
@@ -54,7 +54,7 @@ export default function Profile() {
           ))}
 
           <button type="submit"
-            className="self-start px-6 py-3 rounded-xl text-white text-sm font-semibold border-none cursor-pointer"
+            className="self-start px-6 py-3 text-sm font-semibold text-white border-none cursor-pointer rounded-xl"
             style={{ background: '#0F5C5C' }}>
             {saved ? '✓ Saved!' : 'Save Changes'}
           </button>
