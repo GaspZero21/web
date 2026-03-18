@@ -1,4 +1,7 @@
+// src/App.jsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider }  from "./context/AuthContext";
+import { UsersProvider } from "./context/UsersContext";   // ← NEW
 import Login          from "./pages/Login";
 import ResetPassword  from "./pages/ResetPassword";
 import AdminLayout    from "./layouts/AdminLayout";
@@ -16,30 +19,35 @@ import Chat           from "./pages/Chat";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public */}
-        <Route path="/"               element={<Login />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public */}
+          <Route path="/"               element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Protected — requires token */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AdminLayout />}>
-            <Route path="/dashboard"     element={<Dashboard />} />
-            <Route path="/users"         element={<Users />} />
-            <Route path="/donors"        element={<Donors />} />
-            <Route path="/beneficiaries" element={<Beneficiaries />} />
-            <Route path="/associations"  element={<Associations />} />
-            <Route path="/donations"     element={<Donations />} />
-            <Route path="/map"           element={<Map />} />
-            <Route path="/profile"       element={<Profile />} />
-            <Route path="/settings"      element={<Settings />} />
-            <Route path="/chat"          element={<Chat />} />
+          {/* Protected — wrap with UsersProvider so all pages share one fetch */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={
+              <UsersProvider>
+                <AdminLayout />
+              </UsersProvider>
+            }>
+              <Route path="/dashboard"     element={<Dashboard />} />
+              <Route path="/users"         element={<Users />} />
+              <Route path="/donors"        element={<Donors />} />
+              <Route path="/beneficiaries" element={<Beneficiaries />} />
+              <Route path="/associations"  element={<Associations />} />
+              <Route path="/donations"     element={<Donations />} />
+              <Route path="/map"           element={<Map />} />
+              <Route path="/profile"       element={<Profile />} />
+              <Route path="/settings"      element={<Settings />} />
+              <Route path="/chat"          element={<Chat />} />
+            </Route>
           </Route>
-        </Route>
-
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

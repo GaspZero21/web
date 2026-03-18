@@ -40,7 +40,7 @@ const API_TO_LABEL = {
 export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Donor', fixedRole = null }) {
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
-  const [phone,    setPhone]    = useState('');
+
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [role,     setRole]     = useState(fixedRole || defaultRole);
@@ -50,7 +50,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
   // Reset form when opened
   useEffect(() => {
     if (open) {
-      setName(''); setEmail(''); setPhone(''); setPassword(''); setShowPass(false);
+      setName(''); setEmail(''); setPassword(''); setShowPass(false);
       setRole(fixedRole || defaultRole);
       setStatus('active'); setError('');
     }
@@ -70,7 +70,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
       id:       Date.now(),
       name:     name.trim(),
       email:    email.trim(),
-      phone:    phone.trim() || '—',
+      phone:    undefined,
       password: password.trim(),
       role:     ROLE_TO_API[role] ?? 'USER',  // send API value e.g. DONATOR, COLLECTIVITE
       status,
@@ -210,19 +210,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
             </p>
           </div>
 
-          {/* Phone */}
-          <div>
-            <label className="block text-xs font-semibold text-[#6b8a82] mb-1.5 uppercase tracking-wide">
-              Phone <span className="font-normal normal-case">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="e.g. +213 550 123 456"
-              className="w-full rounded-xl px-4 py-2.5 text-sm border border-[#e2ece8] bg-[#FAF9F7] text-[#1a2e2e] outline-none"
-            />
-          </div>
+
 
           {/* Status */}
           <div>

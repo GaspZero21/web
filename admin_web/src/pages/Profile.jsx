@@ -1,11 +1,22 @@
 // pages/Profile.jsx
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Profile() {
-  const [name,     setName]     = useState('Admin');
-  const [email,    setEmail]    = useState('admin@madad.com');
+  const { user } = useAuth();
+
+  const [name,     setName]     = useState(user?.name  || '');
+  const [email,    setEmail]    = useState(user?.email || '');
   const [password, setPassword] = useState('');
   const [saved,    setSaved]    = useState(false);
+
+  // Avatar initials derived live from the name/email fields
+  const initials = name
+    ? name.split(' ').filter(Boolean).map(p => p[0].toUpperCase()).slice(0, 2).join('')
+    : email
+        ? email.split('@')[0].split(/[._-]/).filter(Boolean)
+            .map(p => p[0].toUpperCase()).slice(0, 2).join('')
+        : 'AD';
 
   function handleSave(e) {
     e.preventDefault();
@@ -26,20 +37,22 @@ export default function Profile() {
         {/* Avatar header */}
         <div className="bg-[#0F5C5C] px-6 py-8 flex items-center gap-5">
           <div className="w-16 h-16 rounded-2xl bg-[#C96E4A] flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
-            AD
+            {initials}
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">{name}</h2>
+            <h2 className="text-lg font-semibold text-white">{name || email}</h2>
             <p className="text-white/60 text-sm mt-0.5">{email}</p>
-            <span className="mt-2 inline-block text-xs bg-white/15 text-white px-2.5 py-0.5 rounded-full">Super Admin</span>
+            <span className="mt-2 inline-block text-xs bg-white/15 text-white px-2.5 py-0.5 rounded-full">
+              {user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : 'Admin'}
+            </span>
           </div>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSave} className="flex flex-col gap-5 p-6">
           {[
-            { label:'Full Name', type:'text', value:name, setter:setName },
-            { label:'Email Address', type:'email', value:email, setter:setEmail },
+            { label:'Full Name',    type:'text',     value:name,     setter:setName },
+            { label:'Email Address',type:'email',    value:email,    setter:setEmail },
             { label:'New Password', type:'password', value:password, setter:setPassword, placeholder:'Leave blank to keep current' },
           ].map(f => (
             <div key={f.label}>

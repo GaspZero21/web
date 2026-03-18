@@ -1,6 +1,6 @@
-// pages/Donors.jsx — filters users with role DONOR from /api/v1/admin/users
-import { useState, useEffect } from 'react';
-import { adminUsers } from '../api/api';
+// pages/Donors.jsx
+import { useState } from 'react';
+import { useUsers } from '../context/UsersContext';
 import AddUserModal from '../components/AddUserModal';
 
 const STATUS_STYLES = {
@@ -14,38 +14,25 @@ function initials(name = '') {
 }
 
 export default function Donors() {
-  const [donors,    setDonors]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState('');
+  const { users, loading, error, refresh, getRole, getStatus, getId, createUser } = useUsers();
+  const donors = users.filter(u => getRole(u) === 'DONATOR');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [search,    setSearch]    = useState('');
   const [confirm,   setConfirm]   = useState(null);
 
-  useEffect(() => { fetchDonors(); }, []);
-
-  async function fetchDonors() {
-    setLoading(true); setError('');
-    try {
-      const res  = await adminUsers.getAll();
-      const list = res?.data ?? res?.users ?? res ?? [];
-      const all  = Array.isArray(list) ? list : [];
-      setDonors(all.filter(u => (u.role ?? u.roles?.[0] ?? '').toUpperCase() === 'DONATOR'));
-    } catch (e) { setError(e.message); }
-    finally     { setLoading(false); }
-  }
-
   async function handleAdd(userData) {
     try {
-      await adminUsers.create({ ...userData, role: 'DONATOR' });
-      await fetchDonors();
-    } catch (e) { alert('Failed: ' + e.message); }
+      await createUser({ ...userData, role: 'DONATOR' });
+    } catch (e) { alert('Failed to add donor: ' + e.message); }
   }
 
   async function handleDelete(id) {
     try {
+      const { adminUsers } = await import('../api/api');
       await adminUsers.delete(id);
-      setDonors(p => p.filter(u => (u._id ?? u.id) !== id));
-    } catch (e) { alert('Failed: ' + e.message); }
+      await refresh();
+    } catch (e) { alert('Failed to delete: ' + e.message); }
     finally { setConfirm(null); }
   }
 
@@ -62,7 +49,7 @@ export default function Donors() {
           <p className="text-sm text-[#6b8a82] mt-0.5">{loading ? 'Loading…' : `${donors.length} registered donors`}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchDonors} className="px-3 py-2.5 rounded-xl text-sm border border-[#e2ece8] bg-white text-[#6b8a82] cursor-pointer">↻</button>
+          <button onClick={refresh} className="px-3 py-2.5 rounded-xl text-sm border border-[#e2ece8] bg-white text-[#6b8a82] cursor-pointer">↻</button>
           <button onClick={() => setModalOpen(true)}
             className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold border-none cursor-pointer"
             style={{ background: '#0F5C5C' }}>+ Add Donor</button>
@@ -88,12 +75,9 @@ export default function Donors() {
             </thead>
             <tbody>
               {filtered.map(u => {
-                const id     = u._id ?? u.id;
+                const id     = getId(u);
                 const name   = u.name ?? u.fullName ?? 'Unknown';
-                const email  = u.email ?? '';
-                const phone  = u.phone ?? u.phoneNumber ?? '—';
-                const joined = u.createdAt ? new Date(u.createdAt).toISOString().slice(0,10) : '—';
-                const status = u.status ?? (u.isActive === false ? 'inactive' : 'active');
+                const status = getStatus(u);
                 return (
                   <tr key={id} className="border-t border-[#e2ece8] hover:bg-[#FAF9F7]">
                     <td className="px-5 py-3">
@@ -101,7 +85,7 @@ export default function Donors() {
                         <div className="w-8 h-8 rounded-full bg-[#0F5C5C] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">{initials(name)}</div>
                         <div>
                           <p className="text-sm font-medium text-[#1a2e2e]">{name}</p>
-                          <p className="text-xs text-[#6b8a82]">{email}</p>
+                          <p className="text-xs text-[#6b8a82]">{u.email ?? ''}</p>
                         </div>
                       </div>
                     </td>
@@ -110,8 +94,8 @@ export default function Donors() {
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{phone}</td>
-                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{joined}</td>
+                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{u.phone ?? u.phoneNumber ?? '—'}</td>
+                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{u.createdAt ? new Date(u.createdAt).toISOString().slice(0,10) : '—'}</td>
                     <td className="px-5 py-3">
                       <button onClick={() => setConfirm(id)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#fde0dc] text-[#7c1a10] border-none cursor-pointer">Delete</button>
                     </td>

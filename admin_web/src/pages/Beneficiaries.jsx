@@ -1,6 +1,6 @@
-// pages/Beneficiaries.jsx — filters users with role BENEFICIARY from /api/v1/admin/users
-import { useState, useEffect } from 'react';
-import { adminUsers } from '../api/api';
+// pages/Beneficiaries.jsx
+import { useState } from 'react';
+import { useUsers } from '../context/UsersContext';
 import AddUserModal from '../components/AddUserModal';
 
 const STATUS_STYLES = {
@@ -13,43 +13,30 @@ function initials(name = '') {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-export default function Beneficiarys() {
-  const [beneficiarys,    setBeneficiarys]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState('');
+export default function Beneficiaries() {
+  const { users, loading, error, refresh, getRole, getStatus, getId, createUser } = useUsers();
+  const beneficiaries = users.filter(u => getRole(u) === 'BENEFICIARY');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [search,    setSearch]    = useState('');
   const [confirm,   setConfirm]   = useState(null);
 
-  useEffect(() => { fetchBeneficiarys(); }, []);
-
-  async function fetchBeneficiarys() {
-    setLoading(true); setError('');
-    try {
-      const res  = await adminUsers.getAll();
-      const list = res?.data ?? res?.users ?? res ?? [];
-      const all  = Array.isArray(list) ? list : [];
-      setBeneficiarys(all.filter(u => (u.role ?? u.roles?.[0] ?? '').toUpperCase() === 'BENEFICIARY'));
-    } catch (e) { setError(e.message); }
-    finally     { setLoading(false); }
-  }
-
   async function handleAdd(userData) {
     try {
-      await adminUsers.create({ ...userData, role: 'BENEFICIARY' });
-      await fetchBeneficiarys();
-    } catch (e) { alert('Failed: ' + e.message); }
+      await createUser({ ...userData, role: 'BENEFICIARY' });
+    } catch (e) { alert('Failed to add beneficiary: ' + e.message); }
   }
 
   async function handleDelete(id) {
     try {
+      const { adminUsers } = await import('../api/api');
       await adminUsers.delete(id);
-      setBeneficiarys(p => p.filter(u => (u._id ?? u.id) !== id));
-    } catch (e) { alert('Failed: ' + e.message); }
+      await refresh();
+    } catch (e) { alert('Failed to delete: ' + e.message); }
     finally { setConfirm(null); }
   }
 
-  const filtered = beneficiarys.filter(u => {
+  const filtered = beneficiaries.filter(u => {
     const q = search.toLowerCase();
     return (u.name ?? u.fullName ?? '').toLowerCase().includes(q) || (u.email ?? '').includes(q);
   });
@@ -58,11 +45,11 @@ export default function Beneficiarys() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#1a2e2e]" style={{ fontFamily: 'DM Serif Display, serif' }}>Beneficiarys</h1>
-          <p className="text-sm text-[#6b8a82] mt-0.5">{loading ? 'Loading…' : `${beneficiarys.length} registered beneficiarys`}</p>
+          <h1 className="text-xl font-semibold text-[#1a2e2e]" style={{ fontFamily: 'DM Serif Display, serif' }}>Beneficiaries</h1>
+          <p className="text-sm text-[#6b8a82] mt-0.5">{loading ? 'Loading…' : `${beneficiaries.length} registered beneficiaries`}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchBeneficiarys} className="px-3 py-2.5 rounded-xl text-sm border border-[#e2ece8] bg-white text-[#6b8a82] cursor-pointer">↻</button>
+          <button onClick={refresh} className="px-3 py-2.5 rounded-xl text-sm border border-[#e2ece8] bg-white text-[#6b8a82] cursor-pointer">↻</button>
           <button onClick={() => setModalOpen(true)}
             className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold border-none cursor-pointer"
             style={{ background: '#0F5C5C' }}>+ Add Beneficiary</button>
@@ -72,7 +59,7 @@ export default function Beneficiarys() {
       {error && <div className="px-4 py-3 text-sm rounded-xl" style={{ background: '#fde8dc', color: '#8b3d1e' }}>⚠ {error}</div>}
 
       <div className="bg-white rounded-2xl p-4 border border-[#e2ece8]" style={{ boxShadow: '0 2px 12px rgba(15,92,92,0.06)' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search beneficiarys…"
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search beneficiaries…"
           className="w-full rounded-xl px-4 py-2 text-sm border border-[#e2ece8] bg-[#FAF9F7] text-[#1a2e2e] outline-none" />
       </div>
 
@@ -88,12 +75,9 @@ export default function Beneficiarys() {
             </thead>
             <tbody>
               {filtered.map(u => {
-                const id     = u._id ?? u.id;
+                const id     = getId(u);
                 const name   = u.name ?? u.fullName ?? 'Unknown';
-                const email  = u.email ?? '';
-                const phone  = u.phone ?? u.phoneNumber ?? '—';
-                const joined = u.createdAt ? new Date(u.createdAt).toISOString().slice(0,10) : '—';
-                const status = u.status ?? (u.isActive === false ? 'inactive' : 'active');
+                const status = getStatus(u);
                 return (
                   <tr key={id} className="border-t border-[#e2ece8] hover:bg-[#FAF9F7]">
                     <td className="px-5 py-3">
@@ -101,7 +85,7 @@ export default function Beneficiarys() {
                         <div className="w-8 h-8 rounded-full bg-[#C96E4A] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">{initials(name)}</div>
                         <div>
                           <p className="text-sm font-medium text-[#1a2e2e]">{name}</p>
-                          <p className="text-xs text-[#6b8a82]">{email}</p>
+                          <p className="text-xs text-[#6b8a82]">{u.email ?? ''}</p>
                         </div>
                       </div>
                     </td>
@@ -110,8 +94,8 @@ export default function Beneficiarys() {
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{phone}</td>
-                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{joined}</td>
+                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{u.phone ?? u.phoneNumber ?? '—'}</td>
+                    <td className="px-5 py-3 text-xs text-[#6b8a82]">{u.createdAt ? new Date(u.createdAt).toISOString().slice(0,10) : '—'}</td>
                     <td className="px-5 py-3">
                       <button onClick={() => setConfirm(id)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#fde0dc] text-[#7c1a10] border-none cursor-pointer">Delete</button>
                     </td>
@@ -121,7 +105,7 @@ export default function Beneficiarys() {
             </tbody>
           </table>
         )}
-        {!loading && filtered.length === 0 && <div className="text-center py-10 text-sm text-[#6b8a82]">No beneficiarys found.</div>}
+        {!loading && filtered.length === 0 && <div className="text-center py-10 text-sm text-[#6b8a82]">No beneficiaries found.</div>}
       </div>
 
       <AddUserModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={handleAdd} fixedRole="Beneficiary" />

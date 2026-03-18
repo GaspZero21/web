@@ -1,6 +1,7 @@
-// pages/Users.jsx — wired to GET/POST/DELETE /api/v1/admin/users
-import { useState, useEffect } from 'react';
+// pages/Users.jsx — reads from UsersContext, refresh() after every mutation
+import { useState } from 'react';
 import { adminUsers } from '../api/api';
+import { useUsers } from '../context/UsersContext';
 import AddUserModal from '../components/AddUserModal';
 
 const STATUS_STYLES = {
@@ -17,21 +18,12 @@ const ROLE_STYLES = {
   ADMIN:        'bg-[#fde0dc] text-[#7c1a10]',
 };
 const ROLE_ICONS = {
-  DONATOR:      '🤲',
-  BENEFICIARY:  '🍽',
-  COLLECTIVITE: '🏢',
-  USER:         '👤',
-  FOOD_SAVER:   '🌱',
-  ADMIN:        '🔑',
+  DONATOR: '🤲', BENEFICIARY: '🍽', COLLECTIVITE: '🏢',
+  USER: '👤', FOOD_SAVER: '🌱', ADMIN: '🔑',
 };
-// Human-readable display labels
 const ROLE_LABELS = {
-  DONATOR:      'Donor',
-  BENEFICIARY:  'Beneficiary',
-  COLLECTIVITE: 'Association',
-  FOOD_SAVER:   'Food Saver',
-  ADMIN:        'Admin',
-  USER:         'User',
+  DONATOR: 'Donor', BENEFICIARY: 'Beneficiary', COLLECTIVITE: 'Association',
+  FOOD_SAVER: 'Food Saver', ADMIN: 'Admin', USER: 'User',
 };
 
 function initials(name = '') {
@@ -39,41 +31,24 @@ function initials(name = '') {
 }
 
 export default function Users() {
-  const [users,      setUsers]      = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState('');
+  const { users, loading, error, refresh, getRole, getStatus, getId } = useUsers();
+
   const [modalOpen,  setModalOpen]  = useState(false);
   const [search,     setSearch]     = useState('');
   const [filterRole, setFilterRole] = useState('All');
   const [confirm,    setConfirm]    = useState(null);
   const [actionLoad, setActionLoad] = useState(null);
 
-  useEffect(() => { fetchUsers(); }, []);
-
-  async function fetchUsers() {
-    setLoading(true); setError('');
-    try {
-      const res = await adminUsers.getAll();
-      // handle { data: [...] } or { users: [...] } or plain array
-      const list = res?.data ?? res?.users ?? res ?? [];
-      setUsers(Array.isArray(list) ? list : []);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleAdd(userData) {
     try {
-      const newUser = await adminUsers.create({
+      await adminUsers.create({
         name:     userData.name,
         email:    userData.email,
         password: userData.password,
         phone:    userData.phone,
         role:     userData.role?.toUpperCase(),
       });
-      await fetchUsers();
+      await refresh();   // ← re-fetches, Dashboard + all pages update too
     } catch (e) {
       alert('Failed to create user: ' + e.message);
     }
@@ -83,7 +58,7 @@ export default function Users() {
     setActionLoad(id);
     try {
       await adminUsers.delete(id);
-      setUsers(p => p.filter(u => (u._id ?? u.id) !== id));
+      await refresh();
     } catch (e) {
       alert('Failed to delete: ' + e.message);
     } finally {
@@ -94,7 +69,7 @@ export default function Users() {
   async function handleStatus(id, status) {
     try {
       await adminUsers.setStatus(id, status);
-      await fetchUsers();
+      await refresh();
     } catch (e) {
       alert('Failed to update status: ' + e.message);
     }
@@ -105,21 +80,19 @@ export default function Users() {
   const filtered = users.filter(u => {
     const name  = u.name  ?? u.fullName ?? '';
     const email = u.email ?? '';
-    const role  = (u.role ?? u.roles?.[0] ?? '').toUpperCase();
+    const role  = getRole(u);
     const q     = search.toLowerCase();
-    const matchRole   = filterRole === 'All' || role === filterRole;
-    const matchSearch = name.toLowerCase().includes(q) || email.includes(q);
-    return matchRole && matchSearch;
+    return (filterRole === 'All' || role === filterRole)
+      && (name.toLowerCase().includes(q) || email.includes(q));
   });
 
   const counts = { All: users.length };
   roles.slice(1).forEach(r => {
-    counts[r] = users.filter(u => (u.role ?? u.roles?.[0] ?? '').toUpperCase() === r).length;
+    counts[r] = users.filter(u => getRole(u) === r).length;
   });
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#1a2e2e]"
@@ -129,7 +102,7 @@ export default function Users() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchUsers}
+          <button onClick={refresh}
             className="px-3 py-2.5 rounded-xl text-sm border border-[#e2ece8] bg-white text-[#6b8a82] cursor-pointer">
             ↻ Refresh
           </button>
@@ -141,7 +114,6 @@ export default function Users() {
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="px-4 py-3 text-sm rounded-xl"
           style={{ background: '#fde8dc', color: '#8b3d1e', border: '1px solid #f5c6a8' }}>
@@ -182,12 +154,12 @@ export default function Users() {
             </thead>
             <tbody>
               {filtered.map(u => {
-                const id      = u._id ?? u.id;
-                const name    = u.name ?? u.fullName ?? 'Unknown';
-                const email   = u.email ?? '';
-                const phone   = u.phone ?? u.phoneNumber ?? '—';
-                const role    = (u.role ?? u.roles?.[0] ?? 'USER').toUpperCase();
-                const status  = u.status ?? (u.isActive === false ? 'inactive' : 'active');
+                const id     = getId(u);
+                const name   = u.name ?? u.fullName ?? 'Unknown';
+                const email  = u.email ?? '';
+                const phone  = u.phone ?? u.phoneNumber ?? '—';
+                const role   = getRole(u);
+                const status = getStatus(u);
                 return (
                   <tr key={id} className="border-t border-[#e2ece8] hover:bg-[#FAF9F7]">
                     <td className="px-5 py-3">
@@ -214,16 +186,13 @@ export default function Users() {
                     <td className="px-5 py-3 text-xs text-[#6b8a82]">{phone}</td>
                     <td className="px-5 py-3">
                       <div className="flex gap-2">
-                        {/* Ban / Unban */}
                         <button
                           onClick={() => handleStatus(id, status === 'banned' ? 'active' : 'banned')}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border-none cursor-pointer"
                           style={{ background: status === 'banned' ? '#d6ebe5' : '#fef3cd', color: status === 'banned' ? '#0F5C5C' : '#7c5c10' }}>
                           {status === 'banned' ? 'Unban' : 'Ban'}
                         </button>
-                        {/* Delete */}
-                        <button onClick={() => setConfirm(id)}
-                          disabled={actionLoad === id}
+                        <button onClick={() => setConfirm(id)} disabled={actionLoad === id}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#fde0dc] text-[#7c1a10] border-none cursor-pointer">
                           {actionLoad === id ? '…' : 'Delete'}
                         </button>
@@ -242,7 +211,6 @@ export default function Users() {
 
       <AddUserModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={handleAdd} defaultRole="Donor" />
 
-      {/* Delete confirm */}
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setConfirm(null)}>
           <div className="text-center bg-white shadow-2xl rounded-2xl p-7 w-72" onClick={e => e.stopPropagation()}>

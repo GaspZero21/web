@@ -1,7 +1,6 @@
-// pages/Dashboard.jsx — fully dynamic, fetches real data from API
-import { useState, useEffect } from 'react';
+// pages/Dashboard.jsx — reads from shared UsersContext, always up to date
 import { Link } from 'react-router-dom';
-import { adminUsers } from '../api/api';
+import { useUsers } from '../context/UsersContext';
 import StatCard from '../components/StatCard';
 import BarChartComponent from '../components/BarChart';
 
@@ -55,31 +54,9 @@ function roleLabel(role = '') {
 }
 
 export default function Dashboard() {
-  const [users,    setUsers]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState('');
-
-  useEffect(() => {
-    async function fetchAll() {
-      setLoading(true); setError('');
-      try {
-        // Fetch up to 100 users to compute all stats
-        const res  = await adminUsers.getAll(1, 100);
-        const list = res?.data ?? res?.users ?? res ?? [];
-        setUsers(Array.isArray(list) ? list : []);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAll();
-  }, []);
+  const { users, loading, error, refresh, getRole, getStatus } = useUsers(); // ← context
 
   // ── Computed stats ──────────────────────────────────────────
-  const getRole   = u => (u.role ?? u.roles?.[0] ?? 'USER').toUpperCase();
-  const getStatus = u => u.status ?? (u.isActive === false ? 'inactive' : 'active');
-
   const totalUsers    = users.length;
   const donors        = users.filter(u => getRole(u) === 'DONATOR').length;
   const beneficiaries = users.filter(u => getRole(u) === 'BENEFICIARY').length;
@@ -88,34 +65,34 @@ export default function Dashboard() {
   const activeAssoc   = associations.filter(u => getStatus(u) === 'active').length;
   const pendingAssoc  = associations.filter(u => ['pending','inactive'].includes(getStatus(u))).length;
   const activeUsers   = users.filter(u => getStatus(u) === 'active').length;
+  const foodSavers    = users.filter(u => getRole(u) === 'FOOD_SAVER').length;
 
   // Recent 5 registrations sorted by createdAt desc
   const recentUsers = [...users]
     .sort((a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0))
     .slice(0, 5);
 
-  // Recent activity feed — derived from recent users
+  // Activity feed derived from recent users
   const activity = recentUsers.map(u => {
     const role = getRole(u);
     const name = u.name ?? u.fullName ?? 'Someone';
-    const icon = roleIcon(role);
     const text =
-      role === 'DONATOR'       ? `${name} joined as a donor` :
-      role === 'BENEFICIARY' ? `New beneficiary registered: ${name}` :
+      role === 'DONATOR'      ? `${name} joined as a donor` :
+      role === 'BENEFICIARY'  ? `New beneficiary registered: ${name}` :
       role === 'COLLECTIVITE' ? `${name} joined the platform` :
-      role === 'FOOD_SAVER'  ? `${name} became a Food Saver 🌱` :
+      role === 'FOOD_SAVER'   ? `${name} became a Food Saver 🌱` :
       `${name} created an account`;
-    return { icon, text, time: timeAgo(u.createdAt) };
+    return { icon: roleIcon(role), text, time: timeAgo(u.createdAt) };
   });
 
-  // Top 3 associations for the overview panel
+  // Top 3 associations
   const topAssociations = associations.slice(0, 3).map(u => ({
-    name:   u.name ?? u.fullName ?? 'Association',
-    avatar: initials(u.name ?? u.fullName ?? ''),
-    status: getStatus(u),
-    members: u.membersCount ?? u.members ?? '—',
+    name:      u.name ?? u.fullName ?? 'Association',
+    avatar:    initials(u.name ?? u.fullName ?? ''),
+    status:    getStatus(u),
+    members:   u.membersCount ?? u.members ?? '—',
     donations: u.donationsCount ?? u.donations ?? '—',
-    pct: Math.floor(Math.random() * 40) + 40, // replace with real metric when API provides it
+    pct:       Math.floor(Math.random() * 40) + 40,
   }));
 
   if (loading) return (
@@ -136,7 +113,7 @@ export default function Dashboard() {
           style={{ background: '#fde8dc', color: '#8b3d1e', border: '1px solid #f5c6a8' }}>
           <span>⚠</span>
           <span>{error} — showing cached data if available.</span>
-          <button onClick={() => window.location.reload()}
+          <button onClick={refresh}
             className="ml-auto text-xs font-semibold underline bg-transparent border-none cursor-pointer"
             style={{ color: '#8b3d1e' }}>Retry</button>
         </div>
@@ -144,11 +121,11 @@ export default function Dashboard() {
 
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard title="Total Users"   value={totalUsers.toLocaleString()}    icon="👥" sub={`${activeUsers} active`}      trend="+8%"  trendUp />
-        <StatCard title="Donors"        value={donors.toLocaleString()}        icon="🤲" sub="Registered donors"            trend="+12%" trendUp />
-        <StatCard title="Beneficiaries" value={beneficiaries.toLocaleString()} icon="🍽" sub="Families & individuals"       trend="+5%"  trendUp />
-        <StatCard title="Associations"  value={assocCount.toLocaleString()}    icon="🏢" sub={`${activeAssoc} active`}      trend={`+${assocCount}`} trendUp />
-        <StatCard title="Food Savers"   value={users.filter(u=>getRole(u)==='FOOD_SAVER').length.toLocaleString()} icon="🌱" sub="Promoted users" trend="+18%" trendUp />
+        <StatCard title="Total Users"   value={totalUsers.toLocaleString()}    icon="👥" sub={`${activeUsers} active`}   trend="+8%"  trendUp />
+        <StatCard title="Donors"        value={donors.toLocaleString()}        icon="🤲" sub="Registered donors"         trend="+12%" trendUp />
+        <StatCard title="Beneficiaries" value={beneficiaries.toLocaleString()} icon="🍽" sub="Families & individuals"    trend="+5%"  trendUp />
+        <StatCard title="Associations"  value={assocCount.toLocaleString()}    icon="🏢" sub={`${activeAssoc} active`}   trend={`+${assocCount}`} trendUp />
+        <StatCard title="Food Savers"   value={foodSavers.toLocaleString()}    icon="🌱" sub="Promoted users"            trend="+18%" trendUp />
       </div>
 
       {/* ── Chart + Categories ── */}
@@ -156,8 +133,6 @@ export default function Dashboard() {
         <div className="lg:col-span-2">
           <BarChartComponent />
         </div>
-
-        {/* Food Categories */}
         <div className="bg-white rounded-2xl p-6 border border-[#e2ece8]"
           style={{ boxShadow: '0 2px 12px rgba(15,92,92,0.06)' }}>
           <h3 className="font-semibold text-[#1a2e2e] mb-1">Food Categories</h3>
@@ -181,7 +156,6 @@ export default function Dashboard() {
       {/* ── Associations Overview ── */}
       <div className="bg-white rounded-2xl border border-[#e2ece8]"
         style={{ boxShadow: '0 2px 12px rgba(15,92,92,0.06)' }}>
-
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#e2ece8]">
           <div>
             <h3 className="font-semibold text-[#1a2e2e]">Associations Overview</h3>
@@ -193,8 +167,7 @@ export default function Dashboard() {
               { label: 'Active',  val: activeAssoc,  bg: '#d6ebe5', color: '#0F5C5C' },
               { label: 'Pending', val: pendingAssoc, bg: '#fef3cd', color: '#7c5c10' },
             ].map(s => (
-              <div key={s.label} className="px-4 py-2 text-center rounded-xl"
-                style={{ background: s.bg }}>
+              <div key={s.label} className="px-4 py-2 text-center rounded-xl" style={{ background: s.bg }}>
                 <p className="text-lg font-bold leading-none"
                   style={{ color: s.color, fontFamily: 'DM Serif Display, serif' }}>{s.val}</p>
                 <p className="text-[10px] mt-0.5" style={{ color: s.color }}>{s.label}</p>
@@ -203,7 +176,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Association rows */}
         {topAssociations.length > 0 ? (
           <div className="divide-y divide-[#e2ece8]">
             {topAssociations.map((a, i) => {
@@ -244,11 +216,8 @@ export default function Dashboard() {
             })}
           </div>
         ) : (
-          <div className="text-center py-8 text-sm text-[#6b8a82]">
-            No associations registered yet.
-          </div>
+          <div className="text-center py-8 text-sm text-[#6b8a82]">No associations registered yet.</div>
         )}
-
         <div className="px-6 py-4 border-t border-[#e2ece8]">
           <Link to="/associations" className="text-xs font-semibold text-[#0F5C5C] no-underline">
             View all associations →
@@ -258,8 +227,6 @@ export default function Dashboard() {
 
       {/* ── Recent Registrations + Activity ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-        {/* Recent registrations */}
         <div className="bg-white rounded-2xl p-6 border border-[#e2ece8]"
           style={{ boxShadow: '0 2px 12px rgba(15,92,92,0.06)' }}>
           <div className="flex items-center justify-between mb-5">
@@ -296,7 +263,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Activity feed */}
         <div className="bg-white rounded-2xl p-6 border border-[#e2ece8]"
           style={{ boxShadow: '0 2px 12px rgba(15,92,92,0.06)' }}>
           <h3 className="font-semibold text-[#1a2e2e] mb-5">Recent Activity</h3>
@@ -318,7 +284,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

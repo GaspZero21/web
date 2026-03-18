@@ -3,9 +3,12 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 import { auth } from '../api/api';
+import { useAuth } from '../context/AuthContext';       // ← NEW
 
 export default function Login() {
   const navigate = useNavigate();
+  const { loginUser } = useAuth();                      // ← NEW
+
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
@@ -18,7 +21,8 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await auth.login(email, password);
+      await auth.login(email, password);  // sets tokens in localStorage via api.js
+      await loginUser();                  // ← fetches /auth/me and stores user in context
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');
