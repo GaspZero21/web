@@ -4,16 +4,13 @@ import Sidebar from '../components/Sidebar';
 import Navbar  from '../components/Navbar';
 
 const PAGE_TITLES = {
-  '/dashboard':     'Dashboard',
-  '/users':         'All Users',
-  '/donors':        'Donors',
-  '/beneficiaries': 'Beneficiaries',
-  '/associations':  'Associations',
-  '/donations':     'Donations',
-  '/map':           'Donations Map',
-  '/profile':       'Profile',
-  '/settings':      'Settings',
-  '/chat':          'Food Saver Chat',
+  '/dashboard': 'Dashboard',
+  '/users':     'Users',
+  '/donations': 'Donations',
+  '/map':       'Donations Map',
+  '/chat':      'Admin Chat',
+  '/profile':   'Profile',
+  '/settings':  'Settings',
 };
 
 export default function AdminLayout() {

@@ -2,23 +2,21 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  FaTachometerAlt, FaUsers, FaHandHoldingHeart,
+  FaTachometerAlt, FaUsers,
   FaMapMarkedAlt, FaCogs, FaSignOutAlt, FaDonate,
-  FaUser, FaBuilding
+  FaUser, FaComments
 } from 'react-icons/fa';
 import logo from '../assets/logo.svg';
 import { auth } from '../api/api';
 
 const NAV = [
-  { label: 'Dashboard',     icon: <FaTachometerAlt />, path: '/dashboard' },
-  { label: 'Users',         icon: <FaUsers />,          path: '/users' },
-  { label: 'Donors',        icon: <FaHandHoldingHeart />, path: '/donors' },
-  { label: 'Beneficiaries', icon: <FaUsers />,          path: '/beneficiaries' },
-  { label: 'Associations',  icon: <FaBuilding />,       path: '/associations' },
-  { label: 'Donations',     icon: <FaDonate />,         path: '/donations' },
-  { label: 'Map',           icon: <FaMapMarkedAlt />,   path: '/map' },
-  { label: 'Profile',       icon: <FaUser />,           path: '/profile' },
-  { label: 'Settings',      icon: <FaCogs />,           path: '/settings' },
+  { label: 'Dashboard', icon: <FaTachometerAlt />, path: '/dashboard' },
+  { label: 'Users',     icon: <FaUsers />,         path: '/users' },
+  { label: 'Donations', icon: <FaDonate />,         path: '/donations' },
+  { label: 'Map',       icon: <FaMapMarkedAlt />,   path: '/map' },
+  { label: 'Chat',      icon: <FaComments />,       path: '/chat' },
+  { label: 'Profile',   icon: <FaUser />,           path: '/profile' },
+  { label: 'Settings',  icon: <FaCogs />,           path: '/settings' },
 ];
 
 export default function Sidebar() {
@@ -27,7 +25,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   async function handleLogout() {
-    await auth.logout(); // POST /api/v1/auth/logout + clears tokens
+    await auth.logout();
     navigate('/', { replace: true });
   }
 
@@ -46,8 +44,10 @@ export default function Sidebar() {
         />
         {!collapsed && (
           <div>
-            <div className="text-lg font-semibold leading-none text-white"
-              style={{ fontFamily: 'DM Serif Display, serif' }}>
+            <div
+              className="text-lg font-semibold leading-none text-white"
+              style={{ fontFamily: 'DM Serif Display, serif' }}
+            >
               Madad
             </div>
             <div className="text-white/40 text-[9px] tracking-[2.5px] mt-0.5">ADMIN</div>
@@ -67,10 +67,10 @@ export default function Sidebar() {
               to={item.path}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl no-underline"
               style={{
-                color: active ? 'white' : 'rgba(255,255,255,0.55)',
+                color:      active ? 'white' : 'rgba(255,255,255,0.55)',
                 background: active ? 'rgba(255,255,255,0.13)' : 'transparent',
                 fontWeight: active ? 600 : 400,
-                fontSize: 13.5,
+                fontSize:   13.5,
               }}
             >
               <span className="flex-shrink-0 text-base">{item.icon}</span>
@@ -95,7 +95,7 @@ export default function Sidebar() {
         {!collapsed && <span>Collapse</span>}
       </button>
 
-      {/* Logout — button that navigates to login */}
+      {/* Logout */}
       <button
         onClick={handleLogout}
         className="mx-2 mb-4 flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer border-none"

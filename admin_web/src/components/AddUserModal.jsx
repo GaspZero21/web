@@ -4,7 +4,7 @@
 //   open        — boolean
 //   onClose     — fn()
 //   onAdd       — fn(user)
-//   defaultRole — display label: 'Donor' | 'Beneficiary' | 'Association'
+//   defaultRole — display label: 'Donor' | 'Beneficiary' | 'Association' | 'User'
 //   fixedRole   — if set, hides the role selector and forces that role
 
 import { useState, useEffect } from 'react';
@@ -13,10 +13,11 @@ import { useState, useEffect } from 'react';
 const ROLES = ['Donor', 'Beneficiary', 'Association', 'Food Saver'];
 
 const ROLE_COLORS = {
-  Donor:       { bg: '#d6ebe5', color: '#0F5C5C' },
-  Beneficiary: { bg: '#fde8dc', color: '#8b3d1e' },
-  Association: { bg: '#e8e8f0', color: '#3b3b8b' },
-  'Food Saver':{ bg: '#fff3cd', color: '#7c5c10' },
+  Donor:        { bg: '#d6ebe5', color: '#0F5C5C' },
+  Beneficiary:  { bg: '#fde8dc', color: '#8b3d1e' },
+  Association:  { bg: '#e8e8f0', color: '#3b3b8b' },
+  'Food Saver': { bg: '#fff3cd', color: '#7c5c10' },
+  User:         { bg: '#F5F0E8', color: '#6b8a82' },
 };
 
 // Map display label → API role value
@@ -25,6 +26,7 @@ const ROLE_TO_API = {
   Beneficiary:  'BENEFICIARY',
   Association:  'COLLECTIVITE',
   'Food Saver': 'FOOD_SAVER',
+  User:         'USER',
 };
 
 // Map API role value → display label (for showing fixed role badge)
@@ -37,10 +39,17 @@ const API_TO_LABEL = {
   USER:         'User',
 };
 
+const ROLE_ICONS = {
+  Donor:        '🤲',
+  Beneficiary:  '🍽',
+  Association:  '🏢',
+  'Food Saver': '🌱',
+  User:         '👤',
+};
+
 export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Donor', fixedRole = null }) {
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
-
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [role,     setRole]     = useState(fixedRole || defaultRole);
@@ -72,7 +81,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
       email:    email.trim(),
       phone:    undefined,
       password: password.trim(),
-      role:     ROLE_TO_API[role] ?? 'USER',  // send API value e.g. DONATOR, COLLECTIVITE
+      role:     ROLE_TO_API[role] ?? 'USER',
       status,
       joined:   new Date().toISOString().slice(0, 10),
       donations: 0,
@@ -81,7 +90,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
     onClose();
   }
 
-  const roleColor = ROLE_COLORS[role] || ROLE_COLORS.Donor;
+  const roleColor = ROLE_COLORS[role] || ROLE_COLORS.User;
 
   return (
     <div
@@ -133,9 +142,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
                       outline:    role === r ? `2px solid ${ROLE_COLORS[r].color}` : '2px solid transparent',
                     }}
                   >
-                    {r === 'Donor'       ? '🤲' :
-                     r === 'Beneficiary' ? '🍽' :
-                     r === 'Food Saver'  ? '🌱' : '🏢'} {r}
+                    {ROLE_ICONS[r] || '👤'} {r}
                   </button>
                 ))}
               </div>
@@ -150,7 +157,7 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
                 className="px-3 py-1 text-xs font-semibold rounded-full"
                 style={{ background: roleColor.bg, color: roleColor.color }}
               >
-                {fixedRole === 'Donor' ? '🤲' : fixedRole === 'Beneficiary' ? '🍽' : '🏢'}{' '}
+                {ROLE_ICONS[fixedRole] || '👤'}{' '}
                 {API_TO_LABEL[ROLE_TO_API[fixedRole]] ?? fixedRole}
               </span>
             </div>
@@ -209,8 +216,6 @@ export default function AddUserModal({ open, onClose, onAdd, defaultRole = 'Dono
               This password will be assigned to the user's account.
             </p>
           </div>
-
-
 
           {/* Status */}
           <div>
