@@ -1,4 +1,4 @@
-// pages/Users.jsx — all users, delete hits real API + refreshes context
+// pages/Users.jsx — all users, status actions hit real API + refreshes context
 import { useState } from 'react';
 import { adminUsers } from '../api/api';
 import { useUsers } from '../context/UsersContext';
@@ -39,9 +39,8 @@ export default function Users() {
   const [modalOpen,    setModalOpen]    = useState(false);
   const [search,       setSearch]       = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [confirm,      setConfirm]      = useState(null); // { id, name }
-  const [actionLoad,   setActionLoad]   = useState(null);
-  const [deleteError,  setDeleteError]  = useState('');
+  const [actionLoad,   setActionLoad]   = useState(null); // { id, type }
+  const [actionError,  setActionError]  = useState('');
 
   async function handleAdd(userData) {
     try {
@@ -58,26 +57,39 @@ export default function Users() {
     }
   }
 
-  async function handleDelete(id) {
-    setActionLoad(id);
-    setDeleteError('');
+  // Toggle active ↔ inactive (never touches isBanned)
+  async function handleToggleActive(id, currentStatus) {
+    setActionLoad({ id, type: 'active' });
+    setActionError('');
     try {
-      await adminUsers.delete(id);   // DELETE /api/v1/admin/users/{id}
-      await refresh();               // re-fetches → user disappears from table
+      if (currentStatus === 'inactive') {
+        await adminUsers.activate(id);   // { isActive: true,  isBanned: false }
+      } else {
+        await adminUsers.deactivate(id); // { isActive: false, isBanned: false }
+      }
+      await refresh();
     } catch (e) {
-      setDeleteError('Failed to delete user: ' + e.message);
+      setActionError('Failed to update status: ' + e.message);
     } finally {
       setActionLoad(null);
-      setConfirm(null);
     }
   }
 
-  async function handleStatus(id, newStatus) {
+  // Toggle banned ↔ active
+  async function handleToggleBan(id, currentStatus) {
+    setActionLoad({ id, type: 'ban' });
+    setActionError('');
     try {
-      await adminUsers.setStatus(id, newStatus);
+      if (currentStatus === 'banned') {
+        await adminUsers.unban(id); // { isActive: true,  isBanned: false }
+      } else {
+        await adminUsers.ban(id);   // { isActive: false, isBanned: true }
+      }
       await refresh();
     } catch (e) {
-      alert('Failed to update status: ' + e.message);
+      setActionError('Failed to update ban: ' + e.message);
+    } finally {
+      setActionLoad(null);
     }
   }
 
@@ -130,10 +142,10 @@ export default function Users() {
           ⚠ {error}
         </div>
       )}
-      {deleteError && (
+      {actionError && (
         <div className="px-4 py-3 text-sm rounded-xl"
           style={{ background: '#fde8dc', color: '#8b3d1e', border: '1px solid #f5c6a8' }}>
-          ⚠ {deleteError}
+          ⚠ {actionError}
         </div>
       )}
 
@@ -184,10 +196,28 @@ export default function Users() {
                 const role   = getRole(u);
                 const status = getStatus(u);
                 const joined = u.createdAt ? new Date(u.createdAt).toISOString().slice(0, 10) : '—';
-                const isBusy = actionLoad === id;
+
+                const isBusyActive = actionLoad?.id === id && actionLoad?.type === 'active';
+                const isBusyBan    = actionLoad?.id === id && actionLoad?.type === 'ban';
+                const isBusy       = isBusyActive || isBusyBan;
+
+                // Active/Inactive button — not shown for banned users
+                // (banning already sets isActive:false; unbanning restores active)
+                const showActiveToggle = status !== 'banned';
+                const activeLabel      = status === 'inactive' ? 'Activate' : 'Deactivate';
+                const activeStyle      = status === 'inactive'
+                  ? { background: '#d6ebe5', color: '#0F5C5C' }   // green  → Activate
+                  : { background: '#fef3cd', color: '#7c5c10' };   // yellow → Deactivate
+
+                // Ban/Unban button — always shown
+                const banLabel = status === 'banned' ? 'Unban' : 'Ban';
+                const banStyle = status === 'banned'
+                  ? { background: '#d6ebe5', color: '#0F5C5C' }   // green  → Unban
+                  : { background: '#fde0dc', color: '#7c1a10' };   // red    → Ban
 
                 return (
-                  <tr key={id} className="border-t border-[#e2ece8] hover:bg-[#FAF9F7]">
+                  <tr key={id} className="border-t border-[#e2ece8] hover:bg-[#FAF9F7]"
+                    style={{ opacity: status === 'banned' ? 0.7 : 1 }}>
 
                     {/* User */}
                     <td className="px-5 py-3">
@@ -225,22 +255,27 @@ export default function Users() {
                     {/* Actions */}
                     <td className="px-5 py-3">
                       <div className="flex gap-2">
+
+                        {/* Active / Deactivate toggle — hidden when user is banned */}
+                        {showActiveToggle && (
+                          <button
+                            onClick={() => handleToggleActive(id, status)}
+                            disabled={isBusy}
+                            className="text-xs font-medium px-3 py-1.5 rounded-lg border-none cursor-pointer"
+                            style={activeStyle}>
+                            {isBusyActive ? '…' : activeLabel}
+                          </button>
+                        )}
+
+                        {/* Ban / Unban toggle */}
                         <button
-                          onClick={() => handleStatus(id, status === 'banned' ? 'active' : 'banned')}
+                          onClick={() => handleToggleBan(id, status)}
                           disabled={isBusy}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border-none cursor-pointer"
-                          style={{
-                            background: status === 'banned' ? '#d6ebe5' : '#fef3cd',
-                            color:      status === 'banned' ? '#0F5C5C' : '#7c5c10',
-                          }}>
-                          {status === 'banned' ? 'Unban' : 'Ban'}
+                          style={banStyle}>
+                          {isBusyBan ? '…' : banLabel}
                         </button>
-                        <button
-                          onClick={() => setConfirm({ id, name })}
-                          disabled={isBusy}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#fde0dc] text-[#7c1a10] border-none cursor-pointer">
-                          {isBusy ? '…' : 'Delete'}
-                        </button>
+
                       </div>
                     </td>
                   </tr>
@@ -260,36 +295,6 @@ export default function Users() {
         onAdd={handleAdd}
         defaultRole="User"
       />
-
-      {/* Delete confirmation modal */}
-      {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
-          onClick={() => setConfirm(null)}>
-          <div className="text-center bg-white shadow-2xl rounded-2xl p-7 w-72"
-            onClick={e => e.stopPropagation()}>
-            <div className="mb-3 text-3xl">🗑</div>
-            <h3 className="font-semibold text-[#1a2e2e] mb-1">Delete user?</h3>
-            <p className="text-sm text-[#6b8a82] mb-1">
-              <span className="font-medium text-[#1a2e2e]">{confirm.name}</span>
-            </p>
-            <p className="text-xs text-[#6b8a82] mb-5">
-              This permanently removes them from the database.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirm(null)}
-                className="flex-1 py-2 rounded-xl border border-[#e2ece8] text-sm text-[#6b8a82] cursor-pointer bg-white">
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(confirm.id)}
-                disabled={actionLoad === confirm.id}
-                className="flex-1 py-2 rounded-xl bg-[#C96E4A] text-white text-sm font-semibold cursor-pointer border-none">
-                {actionLoad === confirm.id ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

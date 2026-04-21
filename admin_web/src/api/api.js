@@ -126,27 +126,50 @@ function extractDonations(res) {
   if (res.data && Array.isArray(res.data.data))      return res.data.data;
   return [];
 }
+
+export function normaliseDonation(d) {
+  if (!d || typeof d !== 'object') return d;
+  // Resolve hidden state from any field the backend might use
+  const isHidden =
+    d.isHidden ??          // preferred — what the API Swagger shows
+    d.hidden ??            // alternate backend spelling
+    (d.visibility === false) ?? // visibility=false means hidden
+    false;
+  return { ...d, isHidden };
+}
+
 export const donationsApi = {
-  // GET /api/v1/donations/all — admin endpoint, returns ALL donations regardless of status
-  // Falls back to /api/v1/donations if the admin endpoint fails
+
   getAll: async () => {
     try {
       const res = await get('/api/v1/donations/all');
       const list = extractDonations(res);
-      if (list.length > 0) return list;
+      if (list.length > 0) return list.map(normaliseDonation);
     } catch (_) {}
     // fallback
     try {
-      return extractDonations(await get('/api/v1/donations'));
+      return extractDonations(await get('/api/v1/donations')).map(normaliseDonation);
     } catch (_) {
       return [];
     }
   },
-  getById:  (id)   => get(`/api/v1/donations/${id}`),
-  create:   (body) => post('/api/v1/donations', body),
+  getById: async (id) => {
+    const res = await get(`/api/v1/donations/${id}`);
+    // getById may return the object directly or wrapped
+    const d = res?.data ?? res;
+    return normaliseDonation(d);
+  },
+  create:   (body)     => post('/api/v1/donations', body),
   update:   (id, body) => put(`/api/v1/donations/${id}`, body),
-  cancel:   (id)   => patch(`/api/v1/donations/${id}/cancel`),
-  complete: (id)   => patch(`/api/v1/donations/${id}/complete`),
+  cancel:   (id)       => patch(`/api/v1/donations/${id}/cancel`),
+  complete: (id)       => patch(`/api/v1/donations/${id}/complete`),
+
+toggleVisibility: async (id, currentlyHidden) => {
+  const newHiddenState = !currentlyHidden;
+  return patch(`/api/v1/admin/donations/${id}/visibility`, { 
+    isHidden: newHiddenState 
+  });
+},
 };
 
 
@@ -174,14 +197,6 @@ export const reservationsApi = {
 };
 
 
-// ─── CHAT ────────────────────────────────────────────────────────
-// REST endpoints (Socket.io handles real-time delivery):
-//   GET   /api/v1/chat/{reservationId}                           — get conversation + messages
-//   POST  /api/v1/chat/{reservationId}/messages                  — send a message
-//   POST  /api/v1/chat/{reservationId}/messages/{msgId}/report   — report a message
-// Admin only:
-//   GET   /api/v1/chat/admin/flagged                             — list flagged messages
-//   PATCH /api/v1/chat/admin/messages/{msgId}/moderate           — hide or restore a message
 
 function extractMessages(res) {
   if (!res) return [];
@@ -192,12 +207,40 @@ function extractMessages(res) {
   return [];
 }
 
+
+export function normaliseMessage(msg) {
+  if (!msg || typeof msg !== 'object') return msg;
+  // `isVisible: false` means the message is hidden by a moderator
+  const hiddenByMod = msg.hidden ?? (msg.isVisible === false) ?? false;
+
+  const isFlagged = msg.isFlagged ?? msg.flagged ?? false;
+  return {
+    ...msg,
+    hidden: hiddenByMod,   
+    isFlagged,             
+  };
+}
+
+
+function extractFlaggedMessages(res) {
+  if (!res) return [];
+ 
+  if (res.data?.messages && Array.isArray(res.data.messages)) return res.data.messages;
+  if (Array.isArray(res))                    return res;
+  if (Array.isArray(res.data))               return res.data;
+  if (Array.isArray(res.messages))           return res.messages;
+  if (Array.isArray(res.flagged))            return res.flagged;
+  if (Array.isArray(res.results))            return res.results;
+  return [];
+}
+
 export const chatApi = {
   // Get all messages for a reservation/conversation
   getConversation: async (reservationId) => {
     const res = await get(`/api/v1/chat/${reservationId}`);
+    const rawMessages = extractMessages(res);
     return {
-      messages:       extractMessages(res),
+      messages:       rawMessages.map(normaliseMessage),
       conversationId: res?.conversationId ?? res?.data?.conversationId ?? reservationId,
       raw:            res,
     };
@@ -211,25 +254,21 @@ export const chatApi = {
   reportMessage: (reservationId, messageId, reason) =>
     post(`/api/v1/chat/${reservationId}/messages/${messageId}/report`, { reason }),
 
-  // Admin: get all flagged messages
-  getFlagged: () => get('/api/v1/chat/admin/flagged'),
 
-  // Admin: hide or restore a flagged message
+  getFlagged: async (page = 1, limit = 50) => {
+    const res = await get(`/api/v1/chat/admin/flagged?page=${page}&limit=${limit}`);
+    const messages = extractFlaggedMessages(res).map(normaliseMessage);
+    const pagination = res?.data?.pagination ?? res?.pagination ?? null;
+    return { messages, pagination, raw: res };
+  },
+
+ 
   moderate: (messageId, action) =>
     patch(`/api/v1/chat/admin/messages/${messageId}/moderate`, { action }),
 };
 
 // ─── SOCKET.IO helper ────────────────────────────────────────────
-// Usage:
-//   const socket = createSocket();
-//   socket.emit('join_conversation', { reservationId });
-//   socket.on('new_message', (msg) => { ... });
-//   socket.on('joined', ({ room, conversationId }) => { ... });
-//   socket.on('error', ({ message }) => { ... });
-//   socket.disconnect();
-
 export function createSocket() {
-  // Socket.io is loaded dynamically in Chat.jsx via CDN
   const io = window.io;
   if (!io) throw new Error('Socket.io not loaded yet');
   return io(BASE_URL, {
